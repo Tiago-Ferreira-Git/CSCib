@@ -1,6 +1,8 @@
 close all
 clear all
-myDir = 'C:\Users\Tiago\OneDrive - Universidade de Lisboa\Aulas\5 ano semestre 1\CSCib\Lab\Session 1\1st session'; %gets directory
+
+myDir = pwd; %gets directory
+myDir = fullfile(myDir,'1st session');
 myFiles = dir(fullfile(myDir,'*.mat')); 
 error = [];
 x = [];
