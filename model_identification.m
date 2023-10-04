@@ -12,19 +12,23 @@ models = cell(length(myFiles),model_order-1);
 results = zeros(length(myFiles),model_order-1);
 
 
+plots = false;
+
+
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
-    fprintf(1, 'Now reading %s\n', fullFileName);
+    fprintf(1, 'Now reading %s - k=%d', baseFileName,k);
 
     load(fullFileName);
 
-    t_ignore = 20; % ignore first 10 seconds
-    fs = 50;
+    t_ignore = 30; % ignore first 10 seconds
+    
 
 
 
     t = out.time;
+    fs = 1/(t(2)-t(1));
     t = t(t_ignore * fs:end,1);
     
     
@@ -42,24 +46,25 @@ for k = 1:length(myFiles)
     u = detrend(utrend);
     y = detrend(y_trend);
     
-
-    %Plot of (utrend,ydetrend,alpha) -
-
-    % figure
-    % hold on
-    % subplot(3,1,1)
-    % plot(t,utrend);
-    % xlabel('Time [s]')
-    % ylabel('u [V]')
-    % subplot(3,1,2)
-    % plot(t,y);
-    % xlabel('t')
-    % ylabel('y [º]')
-    % subplot(3,1,3)
-    % plot(t,alphae);
-    % xlabel('t')
-    % ylabel('\alpha [V]')
-    % hold off
+    if(plots)
+        %Plot of (utrend,ydetrend,alpha) -
+        figure
+        hold on
+        subplot(3,1,1)
+        plot(t,utrend);
+        ylim([-2 2])
+        xlabel('Time [s]')
+        ylabel('u [V]')
+        subplot(3,1,2)
+        plot(t,y);
+        xlabel('t')
+        ylabel('y [º]')
+        subplot(3,1,3)
+        plot(t,alphae);
+        xlabel('t')
+        ylabel('\alpha [V]')
+        hold off
+    end
     
     af = 0.8;
     Afilt = [1 -af];
@@ -67,23 +72,22 @@ for k = 1:length(myFiles)
     % Filtering
     yf = filter(Bfilt,Afilt,y);
     
-    
-    %Plot of (utrend,yf) - y filtered
-
-    % figure
-    % hold on
-    % subplot(2,1,1)
-    % plot(t,utrend);
-    % subplot(2,1,2)
-    % plot(t,yf);
-    % ylabel('yf')
-    % hold off
+    if(plots)
+        %Plot of (utrend,yf) - y filtered
+        figure
+        hold on
+        subplot(2,1,1)
+        plot(t,utrend);
+        subplot(2,1,2)
+        plot(t,yf);
+        ylabel('yf')
+        hold off
+    end
     
     z = [yf u];
-
-    for i = 2:model_order
     
-        
+    for i = 2:model_order
+
         na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
         nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
         nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
@@ -98,31 +102,34 @@ for k = 1:length(myFiles)
          
         [~,performance_measurement,~] = compare(z,th);
         
-        % figure
-        % compare(z,th);
+        if(plots)
+            figure
+            compare(z,th);
+        end
 
         models{k, i-1} = th;
         results(k, i-1) = performance_measurement;
 
     end
+
     
     figure
     bar(2:model_order,results(k,:))
     xlabel("Model Order")
     ylabel("Performance")
-    t = title(sprintf('File name:%s\n', baseFileName));
-    set(t,'Interpreter','none');
+    h = title(sprintf('File name:%s\n', baseFileName));
+    set(h,'Interpreter','none');
 
 
-    %Plot of (yf,yfsim), yfsim - result of model applied to the data
-
-
-    % figure
-    % hold on
-    % plot(t,yf),
-    % plot(t,yfsim),
-    % legend({'yf','yfsim'})
-    % hold off
+    if(plots)
+        %Plot of (yf,yfsim), yfsim - result of model applied to the data
+        figure
+        hold on
+        plot(t,yf)
+        plot(t,yfsim)
+        legend({'yf','yfsim'})
+        hold off
+    end
 
 
     %Add integrator
@@ -131,6 +138,17 @@ for k = 1:length(myFiles)
     %convert to state-space model
     [A,B,C,D] = tf2ss(num,den);
     pause(5)
+
+    
+end
+
+%%
+for k = 1:length(myFiles)
+    baseFileName = myFiles(k).name;
+    fullFileName = fullfile(myDir, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+
+    compare_file(th,baseFileName);
 end
 
 
