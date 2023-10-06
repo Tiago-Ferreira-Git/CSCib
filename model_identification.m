@@ -1,7 +1,7 @@
 close all
 clear all
 myDir = pwd; %gets directory
-myDir = fullfile(myDir,'2nd session');
+myDir = fullfile(myDir,'2nd session/Training');
 myFiles = dir(fullfile(myDir,'*.mat')); 
 
 
@@ -18,17 +18,18 @@ plots = false;
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
-    fprintf(1, 'Now reading %s - k=%d', baseFileName,k);
+    fprintf(1, 'Now reading %s - k = %d', baseFileName,k);
 
     load(fullFileName);
-
-    t_ignore = 30; % ignore first 10 seconds
+    plots = false;
+    t_ignore = 10; % ignore first 10 seconds
     
-
+  
 
 
     t = out.time;
     fs = 1/(t(2)-t(1));
+    Ts = t(2)-t(1);
     t = t(t_ignore * fs:end,1);
     
     
@@ -85,6 +86,13 @@ for k = 1:length(myFiles)
     end
     
     z = [yf u];
+
+    if k == 1
+        data = iddata(yf,u,Ts);
+    else 
+        data(:,:,:,baseFileName) = iddata(yf,u,Ts);
+    end
+
     
     for i = 2:model_order
 
@@ -139,16 +147,32 @@ for k = 1:length(myFiles)
     [A,B,C,D] = tf2ss(num,den);
     pause(5)
 
-    
+
 end
 
 %%
+close all
+
+myDir = pwd; %gets directory
+myDir = fullfile(myDir,'2nd session/Validation');
+myFiles = dir(fullfile(myDir,'*.mat')); 
+
+
+i = 5;
+
+na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
+nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
+nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
+nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
+nn = [na nb nc nk];
+
+model = armax(data,nn);
+
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
     fprintf(1, 'Now reading %s\n', fullFileName);
-
-    compare_file(th,baseFileName);
+    compare_file(model,baseFileName);
 end
 
 

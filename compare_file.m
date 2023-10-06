@@ -1,30 +1,18 @@
 function [output] = compare_file(th,baseFileName)
-    
     myDir = pwd; %gets directory
-    myDir = fullfile(myDir,'2nd session');
-    myFiles = dir(fullfile(myDir,'*.mat')); 
-    
+    myDir = fullfile(myDir,'2nd session/Validation');
     fullFileName = fullfile(myDir, baseFileName);
 
-    fprintf(1, 'Now reading %s\n', fullFileName);
 
     load(fullFileName);
 
-    t_ignore = 20; % ignore first 10 seconds
-    fs = 1/(t(2)-t(1));
-
-
-
     t = out.time;
-    t = t(t_ignore * fs:end,1);
-    
-    
-    u = u(t_ignore * fs:end,1);
+
     
     sigs = out.signals.values;
-    utrend = sigs(t_ignore * fs:end,1); % Entrada - Input signal
-    thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
-    alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
+    utrend = sigs(:,1); % Entrada - Input signal
+    thetae = sigs(:,2); % Potenciómetro - Potentiometer signal
+    alphae = sigs(:,3); % Extensómetro - Strain gage signal
 
     
     
