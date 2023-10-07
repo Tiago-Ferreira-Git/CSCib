@@ -1,4 +1,4 @@
-function [output] = compare_file(th,baseFileName)
+function [output] = compare_file(th,baseFileName,af)
     myDir = pwd; %gets directory
     myDir = fullfile(myDir,'2nd session/Validation');
     fullFileName = fullfile(myDir, baseFileName);
@@ -23,7 +23,6 @@ function [output] = compare_file(th,baseFileName)
     
 
     
-    af = 0.8;
     Afilt = [1 -af];
     Bfilt = (1-af)*[1 -1];
     % Filtering

@@ -8,7 +8,7 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
-    fprintf(1, 'Now reading %s - k = %d', baseFileName,k);
+    fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
 
     load(fullFileName);
     plots = false;
@@ -39,7 +39,7 @@ for k = 1:length(myFiles)
     y = detrend(y_trend);
     
     % Filter
-    af = 0.8;
+    af = 0.7;
     Afilt = [1 -af];
     Bfilt = (1-af)*[1 -1];
 
@@ -71,7 +71,7 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 
 % Selection of model's order
 
-i = 5;
+i = 6;
 na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
 nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
 nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
@@ -86,7 +86,7 @@ for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
     fprintf(1, 'Now reading %s\n', fullFileName);
-    compare_file(model,baseFileName);
+    compare_file(model,baseFileName,af);
 end
 
 [den1,num1] = polydata(th);
