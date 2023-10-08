@@ -1,8 +1,10 @@
 close all
 clear all
 myDir = pwd; %gets directory
-myDir = fullfile(myDir,'2nd session/Training');
+myDir = fullfile(myDir,'2nd session/Alldata');
 myFiles = dir(fullfile(myDir,'*.mat')); 
+
+num_exp_test = 18;
 
 
 for k = 1:length(myFiles)
@@ -10,9 +12,9 @@ for k = 1:length(myFiles)
     fullFileName = fullfile(myDir, baseFileName);
     fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
 
-    load(fullFileName,'out','u');
+    load(fullFileName);
     plots = false;
-    t_ignore = 20.2; % ignore first 10 seconds
+    t_ignore = 10; % ignore first 10 seconds
     
   
 
@@ -31,7 +33,7 @@ for k = 1:length(myFiles)
     thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
     alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
 
-    y_teste =  sigs(:,2) + sigs(:,3) ;
+    
     
     y_trend = thetae + alphae;
     
@@ -43,11 +45,17 @@ for k = 1:length(myFiles)
     Afilt = [1 -af];
     Bfilt = (1-af)*[1 -1];
 
-    yf = filter(Bfilt,Afilt,y_teste);
-    yf = yf(t_ignore * fs:end);
+    yf = filter(Bfilt,Afilt,y);
 
-    z = [yf u];
     
+    z = [yf u];
+    if(k == num_exp_test)
+        z_test = [y u];
+        t_test = t;
+        y_test = y_trend;
+    end
+
+
     % Append all the models
     if k == 1
         data = iddata(yf,u,Ts);
@@ -68,12 +76,6 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 
 
 
-fullFileName = fullfile(myDir, 'square_2V_2_5hz_50fs.mat');
-fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
-
-load(fullFileName,'out','u','y','t');
-
-
 % Selection of model's order
 
 i = 5;
@@ -86,13 +88,12 @@ nn = [na nb nc nk];
 
 % Get the model
 model = armax(data,nn);
-
+% 
 % for k = 1:length(myFiles)
 %     baseFileName = myFiles(k).name;
 %     fullFileName = fullfile(myDir, baseFileName);
-%     %fprintf(1, 'Now reading %s\n', fullFileName);
+%     fprintf(1, 'Now reading %s\n', fullFileName);
 %     compare_file(model,baseFileName,af);
-% 
 % end
 
 [den1,num1] = polydata(model);
@@ -104,10 +105,16 @@ yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
 %convert to state-space model
 [A,B,C,D] = tf2ss(num,den);
 pause(5)
-y_dlsim = dlsim(A,B,C,D,u);
+SS = ss(A,B,C,D, 0.02);
 
+%%
+%y_dlsim = lsim(SS,u,t,y(1));
+y_dlsim = compare(SS,z_test);
+
+y_dlsim = detrend(y_dlsim);
 figure
 hold on
-plot(t,y)
-plot(t,y_dlsim)
+plot(t_test,y_test)
+plot(t_test,y_dlsim)
+
 
