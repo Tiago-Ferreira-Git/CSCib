@@ -1,10 +1,10 @@
 close all
 clear all
 myDir = pwd; %gets directory
-myDir = fullfile(myDir,'2nd session/Alldata');
+myDir = fullfile(myDir,'2nd session/Training');
 myFiles = dir(fullfile(myDir,'*.mat')); 
 
-num_exp_test = 18;
+num_exp_test = 16;
 
 
 for k = 1:length(myFiles)
@@ -12,7 +12,7 @@ for k = 1:length(myFiles)
     fullFileName = fullfile(myDir, baseFileName);
     fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
 
-    load(fullFileName);
+    load(fullFileName,'u','out');
     plots = false;
     t_ignore = 10; % ignore first 10 seconds
     
@@ -49,11 +49,7 @@ for k = 1:length(myFiles)
 
     
     z = [yf u];
-    if(k == num_exp_test)
-        z_test = [y u];
-        t_test = t;
-        y_test = y_trend;
-    end
+
 
 
     % Append all the models
@@ -63,13 +59,16 @@ for k = 1:length(myFiles)
         data(:,:,:,baseFileName) = iddata(yf,u,Ts);
     end
 
-
+    if(k == num_exp_test)
+        file = fullFileName;
+    end
 
 
 end
 
 
 %% 
+close all
 myDir = pwd; %gets directory
 myDir = fullfile(myDir,'2nd session/Validation');
 myFiles = dir(fullfile(myDir,'*.mat')); 
@@ -87,34 +86,65 @@ nn = [na nb nc nk];
 
 
 % Get the model
-model = armax(data,nn);
-% 
-% for k = 1:length(myFiles)
-%     baseFileName = myFiles(k).name;
-%     fullFileName = fullfile(myDir, baseFileName);
-%     fprintf(1, 'Now reading %s\n', fullFileName);
-%     compare_file(model,baseFileName,af);
-% end
+model = armax(data,nn)
+for k = 1:length(myFiles)
+    baseFileName = myFiles(k).name;
+    fullFileName = fullfile(myDir, baseFileName);
+    fprintf(1, 'Now reading %s\n', fullFileName);
+    load(fullFileName,'out')
 
-[den1,num1] = polydata(model);
-yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
+    t = out.time;
+    sigs = out.signals.values;
+    utrend = sigs(1:end,1);
+    
+    
+    thetae = sigs(1:end,2); % Potenciómetro - Potentiometer signal
+    alphae = sigs(1:end,3); % Extensómetro - Strain gage signal
+    
+    u = utrend;
+    y = detrend(thetae + alphae);
+            
+    
+    [den1,num1] = polydata(model);
+    yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
+    
+     %Add integrator
+    [num,den] = eqtflength(num1,conv(den1,[1 -1]));
+    
+    %convert to state-space model
+    [A,B,C,D] = tf2ss(num,den);
+    pause(5)
+    SS = ss(A,B,C,D, 0.02);
 
- %Add integrator
-[num,den] = eqtflength(num1,conv(den1,[1 -1]));
+    
+    
+    
+    
+    %y_dlsim = lsim(SS,u,t,y(1));
+    %y_dlsim = compare(SS,z_test);
+    
+    y_dlsim = dlsim(A,B,C,D,u);
+    y_dlsim = detrend(y_dlsim);
+    figure
+    hold on
+    t = t(20*fs:end);
+    y = y(20*fs:end);
+    y_dlsim = y_dlsim(20*fs:end);
+    plot(t,y,'DisplayName','Real')
+    plot(t,y_dlsim,'DisplayName','Sim')
+    xlim([20 40])
+    ylabel('y [º]')
+    xlabel('t [s]')
+    grid on;
+    %plot(t,Dy_sim,'DisplayName','Sim')
+    
+    legend show
 
-%convert to state-space model
-[A,B,C,D] = tf2ss(num,den);
-pause(5)
-SS = ss(A,B,C,D, 0.02);
+end
 
 %%
-%y_dlsim = lsim(SS,u,t,y(1));
-y_dlsim = compare(SS,z_test);
-
-y_dlsim = detrend(y_dlsim);
+freqz(num,den,256,fs)
 figure
-hold on
-plot(t_test,y_test)
-plot(t_test,y_dlsim)
+zplane(num,den)
 
 
