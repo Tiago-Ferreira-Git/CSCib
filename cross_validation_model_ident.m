@@ -1,17 +1,18 @@
 close all
 clear all
+clear
 myDir = pwd; %gets directory
-myDir = fullfile(myDir,'2nd session/Training');
+myDir = fullfile(myDir,'2nd session/Alldata');
 myFiles = dir(fullfile(myDir,'*.mat')); 
 
 % Selection of model's order
 
-ii = 5;
+ii = 4;
 na = ii; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
 nb = ii-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
 nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
 nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
-nn = [na nb nc nk];
+nn_cv = [na nb nc nk];
 x = {};
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
@@ -66,8 +67,13 @@ for k = 1:length(myFiles)
 
 end
 
+%%
+myFiles(21)=[];
+myFiles(22)=[];
+
 
 cop_files = myFiles;
+results_cv = [];
 for jj=1:length(myFiles)
     arr = 1:length(myFiles);
     arr(jj) = [];
@@ -75,11 +81,19 @@ for jj=1:length(myFiles)
     cop_files = myFiles;
     cop_files(jj) = [];
     data2 = getexp(data,arr);
-    model = armax(data2, nn);
+    model = armax(data2, nn_cv);
     figure();
-    compare(getexp(data,jj),model)
+    [ymod,fit,ic] = compare(getexp(data,jj),model);
+    close all
+    results_cv = [results_cv, fit];
 end
-
-
+%%
+figure()
+bar(results_cv)
+grid on
+title(strcat("nn = ", num2str(nn_cv), ",  af=", num2str(af)))
+xlabel("Experiment")
+ylabel("Accuracy (%)")
+%saveas(gcf,strcat("./CV_RES/nn = ", num2str(nn_cv), ",  af=", num2str(af)),'epsc')
 
 
