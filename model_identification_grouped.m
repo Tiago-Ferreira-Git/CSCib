@@ -10,9 +10,9 @@ for k = 1:length(myFiles)
     fullFileName = fullfile(myDir, baseFileName);
     fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
 
-    load(fullFileName);
+    load(fullFileName,'out','u');
     plots = false;
-    t_ignore = 10; % ignore first 10 seconds
+    t_ignore = 20.2; % ignore first 10 seconds
     
   
 
@@ -31,7 +31,7 @@ for k = 1:length(myFiles)
     thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
     alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
 
-    
+    y_teste =  sigs(:,2) + sigs(:,3) ;
     
     y_trend = thetae + alphae;
     
@@ -39,16 +39,15 @@ for k = 1:length(myFiles)
     y = detrend(y_trend);
     
     % Filter
-    af = 0.7;
+    af = 0.4;
     Afilt = [1 -af];
     Bfilt = (1-af)*[1 -1];
 
-    yf = filter(Bfilt,Afilt,y);
+    yf = filter(Bfilt,Afilt,y_teste);
+    yf = yf(t_ignore * fs:end);
 
-    
     z = [yf u];
-
-
+    
     % Append all the models
     if k == 1
         data = iddata(yf,u,Ts);
@@ -71,7 +70,7 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 
 % Selection of model's order
 
-i = 6;
+i = 5;
 na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
 nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
 nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
@@ -85,11 +84,12 @@ model = armax(data,nn);
 for k = 1:length(myFiles)
     baseFileName = myFiles(k).name;
     fullFileName = fullfile(myDir, baseFileName);
-    fprintf(1, 'Now reading %s\n', fullFileName);
+    %fprintf(1, 'Now reading %s\n', fullFileName);
     compare_file(model,baseFileName,af);
+
 end
 
-[den1,num1] = polydata(th);
+[den1,num1] = polydata(model);
 yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
 
  %Add integrator
@@ -98,5 +98,10 @@ yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
 %convert to state-space model
 [A,B,C,D] = tf2ss(num,den);
 pause(5)
+y_dlsim = dlsim(A,B,C,D,u);
 
+figure
+hold on
+plot(t,y)
+plot(t,y_dlsim)
 

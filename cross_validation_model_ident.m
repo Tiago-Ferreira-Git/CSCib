@@ -7,93 +7,112 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 
 % Selection of model's order
 
-ii = 4;
-na = ii; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
-nb = ii-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
-nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
-nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
-nn_cv = [na nb nc nk];
-x = {};
-for k = 1:length(myFiles)
-    baseFileName = myFiles(k).name;
-    fullFileName = fullfile(myDir, baseFileName);
-    fprintf(1, 'Now reading %s - k = %d', baseFileName,k);
 
-    load(fullFileName);
-    plots = false;
-    t_ignore = 10; % ignore first 10 seconds
+validation_scores = zeros(1,length( 3:10));
+for ii=3:10
+    myFiles = dir(fullfile(myDir,'*.mat')); 
+    na = ii; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
+    nb = ii-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
+    nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
+    nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
+    nn_cv = [na nb nc nk];
+    x = {};
+    for k = 1:length(myFiles)
+        baseFileName = myFiles(k).name;
+        fullFileName = fullfile(myDir, baseFileName);
+        %fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
     
-  
-
-    % Load and parse training models
-    t = out.time;
-    fs = 1/(t(2)-t(1));
-    Ts = t(2)-t(1);
-    t = t(t_ignore * fs:end,1);
+        load(fullFileName,'out','u');
+        plots = false;
+        t_ignore = 10; % ignore first 10 seconds
+        
+      
+    
+        % Load and parse training models
+        t = out.time;
+        fs = 1/(t(2)-t(1));
+        Ts = t(2)-t(1);
+        t = t(t_ignore * fs:end,1);
+        
+        
+        u = u(t_ignore * fs:end,1);
+        
+        sigs = out.signals.values;
+       
+        utrend = sigs(t_ignore * fs:end,1); % Entrada - Input signal
+        thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
+        alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
+    
+        
+        
+        y_trend = thetae + alphae;
+        
+        u = detrend(utrend);
+        y = detrend(y_trend);
+        
+        % Filter
+        af = 0.7;
+        
+        Afilt = [1 -af];
+        Bfilt = (1-af)*[1 -1];
+    
+        yf = filter(Bfilt,Afilt,y);
+    
+        
+        z = [yf u];
     
     
-    u = u(t_ignore * fs:end,1);
+        % Append all the models
+        if k == 1
+            data = iddata(yf,u,Ts);
+        else 
+            data=merge(data, iddata(yf,u,Ts));
+        end
     
-    sigs = out.signals.values;
-   
-    utrend = sigs(t_ignore * fs:end,1); % Entrada - Input signal
-    thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
-    alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
-
-    
-    
-    y_trend = thetae + alphae;
-    
-    u = detrend(utrend);
-    y = detrend(y_trend);
-    
-    % Filter
-    af = 0.8;
-    Afilt = [1 -af];
-    Bfilt = (1-af)*[1 -1];
-
-    yf = filter(Bfilt,Afilt,y);
-
-    
-    z = [yf u];
-
-
-    % Append all the models
-    if k == 1
-        data = iddata(yf,u,Ts);
-    else 
-        data=merge(data, iddata(yf,u,Ts));
     end
-
-end
-
-%%
-myFiles(21)=[];
-myFiles(22)=[];
-
-
-cop_files = myFiles;
-results_cv = [];
-for jj=1:length(myFiles)
-    arr = 1:length(myFiles);
-    arr(jj) = [];
-    % train the data on a few experiments:
+    
+    %%
+    % myFiles(17)=[];
+    % myFiles(21)=[];
+    % myFiles(22)=[];
+    
+    
     cop_files = myFiles;
-    cop_files(jj) = [];
-    data2 = getexp(data,arr);
-    model = armax(data2, nn_cv);
-    figure();
-    [ymod,fit,ic] = compare(getexp(data,jj),model);
-    close all
-    results_cv = [results_cv, fit];
+    results_cv = [];
+    for jj=1:length(myFiles)
+        arr = 1:length(myFiles);
+        arr(jj) = [];
+        % train the data on a few experiments:
+        cop_files = myFiles;
+        cop_files(jj) = [];
+        data2 = getexp(data,arr);
+        model = armax(data2, nn_cv);
+        [ymod,fit,ic] = compare(getexp(data,jj),model);
+        % close all
+        results_cv = [results_cv, fit];
+    end
+    %%
+    disp("Cross validation score")
+    %int64(af*10 + 1)
+    validation_scores(1,ii-2)=mean(results_cv);
+    figure()
+    bar(results_cv)
+    grid on
+    title(strcat("nn = ", num2str(nn_cv), ",  af=", num2str(af)))
+    xlabel("Experiment")
+    ylabel("Accuracy (%)")
+    % saveas(gcf,strcat("./CV_RES/nn = ", num2str(nn_cv), ",  af=", num2str(af)),'epsc')
+
 end
 %%
-figure()
-bar(results_cv)
+figure
+plot( 3:10,validation_scores,'s','MarkerSize',10,...
+    'MarkerEdgeColor','red',...
+    'MarkerFaceColor',[1 .6 .6],'LineStyle','--')
+
+
+
 grid on
-title(strcat("nn = ", num2str(nn_cv), ",  af=", num2str(af)))
-xlabel("Experiment")
+xlim([2 11])
+xlabel("Model order")
 ylabel("Accuracy (%)")
-%saveas(gcf,strcat("./CV_RES/nn = ", num2str(nn_cv), ",  af=", num2str(af)),'epsc')
-
-

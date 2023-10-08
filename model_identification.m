@@ -2,7 +2,7 @@ close all
 clear all
 myDir = pwd; %gets directory
 myDir = fullfile(myDir,'2nd session/Validation');
-myFiles = dir(fullfile(myDir,'*.mat')); 
+myFiles = dir(fullfile(myDir,'square*')); 
 
 
 model_order = 10;
@@ -22,25 +22,25 @@ for k = 1:length(myFiles)
 
     load(fullFileName);
     plots = false;
-    t_ignore = 11; % ignore first 10 seconds
+    t_ignore = 20.2; % ignore first 10 seconds
     
-  
+
 
 
     t = out.time;
     fs = 1/(t(2)-t(1));
     Ts = t(2)-t(1);
-    t = t(t_ignore * fs:end,1);
+    t = t(t_ignore * fs:22 * fs,1);
     
     
-    u = u(t_ignore * fs:end,1);
+    u = u(t_ignore * fs:22 * fs,1);
     
     sigs = out.signals.values;
-    utrend = sigs(t_ignore * fs:end,1); % Entrada - Input signal
-    thetae = sigs(t_ignore * fs:end,2); % Potenciómetro - Potentiometer signal
-    alphae = sigs(t_ignore * fs:end,3); % Extensómetro - Strain gage signal
+    utrend = sigs(t_ignore * fs:22 * fs,1); % Entrada - Input signal
+    thetae = sigs(t_ignore * fs:22 * fs,2); % Potenciómetro - Potentiometer signal
+    alphae = sigs(t_ignore * fs:22 * fs,3); % Extensómetro - Strain gage signal
 
-    
+    y_teste =  sigs(:,2) + sigs(:,3) ;
     
     y_trend = thetae + alphae;
     
@@ -66,23 +66,27 @@ for k = 1:length(myFiles)
         ylabel('\alpha [º]')
         hold off
     end
-    
     figure
-    for af = 0.1:0.2:1
-    %af = 1/(1+Ts);
+    plot(t,y);
+    grid on
+    xlabel('t [s]')
+    ylabel('y [º]')
+    figure
+    for af = 0.5:0.1:0.9
+        % af = 1/(1+Ts);
+        % af = 0.8;
         Afilt = [1 -af];
         Bfilt = (1-af)*[1 -1];
         % Filtering
-        yf = filter(Bfilt,Afilt,y);
-        
+        yf = filter(Bfilt,Afilt,y_teste);
+        yf = yf(t_ignore * fs:22 * fs);
         if(true)
             %Plot of (utrend,yf) - y filtered
             hold on
-            % subplot(2,1,1)
-            % plot(t,utrend);
-            % subplot(2,1,2)
-            plot(t,yf,'DisplayName',num2str(af));
-            ylabel('yf')
+            grid on
+            plot(t,yf,'DisplayName',sprintf('af = %.1f',af));
+            xlabel('t [s]')
+            ylabel('yf [º]')
             hold off
         end
     end
@@ -96,33 +100,35 @@ for k = 1:length(myFiles)
     end
 
     
-    % for i = 2:model_order
-    % 
-    %     na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
-    %     nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
-    %     nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
-    %     nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
-    %     nn = [na nb nc nk];
-    %     th = armax(z,nn); % th is a structure in identification toolbox format
-    % 
-    % 
-    %     % Validate and qualify the obatined model
-    %     [den1,num1] = polydata(th);
-    %     yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
-    % 
-    %     [~,performance_measurement,~] = compare(z,th);
-    % 
-    %     if(plots)
-    %         figure
-    %         compare(z,th);
-    %     end
-    % 
-    %     models{k, i-1} = th;
-    %     results(k, i-1) = performance_measurement;
-    % 
-    % end
-    % 
-    % 
+    for i = 2:model_order
+
+        na = i; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
+        nb = i-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
+        nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
+        nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
+        nn = [na nb nc nk];
+        th = armax(z,nn); % th is a structure in identification toolbox format
+
+
+        % Validate and qualify the obatined model
+        [den1,num1] = polydata(th);
+        yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
+        if i == 5
+            model = th;
+        end
+        [~,performance_measurement,~] = compare(z,th);
+
+        if(plots)
+            figure
+            compare(z,th);
+        end
+
+        models{k, i-1} = th;
+        results(k, i-1) = performance_measurement;
+
+    end
+
+
     % figure
     % bar(2:model_order,results(k,:))
     % xlabel("Model Order")
@@ -141,6 +147,8 @@ for k = 1:length(myFiles)
         hold off
     end
 
+    [den1,num1] = polydata(model);
+    yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
 
     %Add integrator
     [num,den] = eqtflength(num1,conv(den1,[1 -1]));
@@ -148,7 +156,12 @@ for k = 1:length(myFiles)
     %convert to state-space model
     [A,B,C,D] = tf2ss(num,den);
     pause(5)
-
+    y_dlsim = dlsim(A,B,C,D,u);
+    % 
+    % figure
+    % hold on
+    % plot(t,y_trend,'DisplayName','y')
+    % plot(t,y_dlsim,'DisplayName','y_dlsim')
 
 end
 
@@ -182,7 +195,7 @@ end
 
 Ts = 1/50;
 
-af = 0.02;
+af = 0.8;
 
 a = (1-af)/(af*Ts);
 

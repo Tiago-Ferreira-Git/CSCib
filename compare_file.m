@@ -3,9 +3,7 @@ function [output] = compare_file(th,baseFileName,af)
     myDir = fullfile(myDir,'2nd session/Validation');
     fullFileName = fullfile(myDir, baseFileName);
 
-
-    load(fullFileName);
-
+    load(fullFileName,'out','u');
     t = out.time;
 
     
@@ -27,8 +25,6 @@ function [output] = compare_file(th,baseFileName,af)
     Bfilt = (1-af)*[1 -1];
     % Filtering
     yf = filter(Bfilt,Afilt,y);
-    
-
     
     z = [yf u];
     [~,output,~] = compare(z,th);
