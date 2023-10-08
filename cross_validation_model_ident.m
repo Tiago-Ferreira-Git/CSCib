@@ -8,11 +8,11 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 % Selection of model's order
 
 
-validation_scores = zeros(1,length( 3:10));
-for ii=3:10
+validation_scores = zeros(1,length(0:0.1:0.9));
+for af = 0:0.1:0.9
     myFiles = dir(fullfile(myDir,'*.mat')); 
-    na = ii; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
-    nb = ii-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
+    na = 5; % na is the order of the polynomial A(q), specified as an Ny-by-Ny matrix of nonnegative integers
+    nb = 5-1; % nb is the order of the polynomial B(q) + 1, specified as an Ny-by-Nu matrix of nonnegative integers
     nc = na; % nc is the order of the polynomial C(q), specified as a column vector of nonnegative integers of length Ny
     nk = 1; % nk is the input-output delay, also known at the transport delay, specified as an Ny-by-Nu matrix of nonnegative integers. nk is represented in ARMAX models by fixed leading zeros of the B polynomial
     nn_cv = [na nb nc nk];
@@ -51,7 +51,7 @@ for ii=3:10
         y = detrend(y_trend);
         
         % Filter
-        af = 0.7;
+        %af = 0.7;
         
         Afilt = [1 -af];
         Bfilt = (1-af)*[1 -1];
@@ -93,8 +93,8 @@ for ii=3:10
     end
     %%
     disp("Cross validation score")
-    %int64(af*10 + 1)
-    validation_scores(1,ii-2)=mean(results_cv);
+    
+    validation_scores(1,int64(af*10 + 1))=mean(results_cv);
     figure()
     bar(results_cv)
     grid on
@@ -106,13 +106,32 @@ for ii=3:10
 end
 %%
 figure
-plot( 3:10,validation_scores,'s','MarkerSize',10,...
+plot( 0:0.1:0.9,validation_scores,'s','MarkerSize',10,...
     'MarkerEdgeColor','red',...
     'MarkerFaceColor',[1 .6 .6],'LineStyle','--')
 
 
 
 grid on
-xlim([2 11])
+xlim([0 1])
 xlabel("Model order")
 ylabel("Accuracy (%)")
+
+
+
+[den1,num1] = polydata(model);
+yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
+
+ %Add integrator
+[num,den] = eqtflength(num1,conv(den1,[1 -1]));
+
+%convert to state-space model
+[A,B,C,D] = tf2ss(num,den);
+pause(5)
+y_dlsim = dlsim(A,B,C,D,u);
+
+figure
+hold on
+plot(t,y)
+plot(t,y_dlsim)
+

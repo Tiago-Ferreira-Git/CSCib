@@ -39,7 +39,7 @@ for k = 1:length(myFiles)
     y = detrend(y_trend);
     
     % Filter
-    af = 0.4;
+    af = 0.7;
     Afilt = [1 -af];
     Bfilt = (1-af)*[1 -1];
 
@@ -68,6 +68,12 @@ myFiles = dir(fullfile(myDir,'*.mat'));
 
 
 
+fullFileName = fullfile(myDir, 'square_2V_2_5hz_50fs.mat');
+fprintf(1, 'Now reading %s - k = %d\n', baseFileName,k);
+
+load(fullFileName,'out','u','y','t');
+
+
 % Selection of model's order
 
 i = 5;
@@ -81,13 +87,13 @@ nn = [na nb nc nk];
 % Get the model
 model = armax(data,nn);
 
-for k = 1:length(myFiles)
-    baseFileName = myFiles(k).name;
-    fullFileName = fullfile(myDir, baseFileName);
-    %fprintf(1, 'Now reading %s\n', fullFileName);
-    compare_file(model,baseFileName,af);
-
-end
+% for k = 1:length(myFiles)
+%     baseFileName = myFiles(k).name;
+%     fullFileName = fullfile(myDir, baseFileName);
+%     %fprintf(1, 'Now reading %s\n', fullFileName);
+%     compare_file(model,baseFileName,af);
+% 
+% end
 
 [den1,num1] = polydata(model);
 yfsim = filter(num1,den1,u); % Equivalent to idsim(u,th)
