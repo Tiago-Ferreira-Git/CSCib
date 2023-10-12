@@ -142,6 +142,8 @@ for k = 1:length(myFiles)
 
 end
 
+
+save('model.mat','A','B','C','D');
 %%
 freqz(num,den,256,fs)
 figure
