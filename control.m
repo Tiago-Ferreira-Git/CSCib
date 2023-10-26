@@ -1,5 +1,6 @@
 clear all;
 close all;
+plots = true;
 
 load('model.mat')
 D = zeros(size(A,1),1);
@@ -7,9 +8,9 @@ n = size(A,1);
 
 Q = C'*C;
 
-R = 10;
+%R = 40;
 
-K = dlqr(A,B,Q,R);
+
 
 Q_w = 100*eye(n);
 R_v = 1;
@@ -22,49 +23,82 @@ L = dlqe(A,G,C,Q_w,R_v);
 x0 = [0 0 0 0 0 10];
 C_ = C; 
 C = eye(6);
+alpha = 0.5;
+costs = [];
+for R = 10:1:100
+    K = dlqr(A,B,Q,R);
+    N = inv(C_*inv(eye(n)-A+B*K)*B);
+    T=10; % Time duration of the simulation
+    sim('statefdbk',T);
+
+
+    ref = zeros(length(y.signals.values));
+    error = sum(Ref.signals.values(:,1) - y.signals.values(:,1))^2;
+    u_energy = u.signals.values' * u.signals.values;
+    %oscillations_pen = length(y.signals.values(y.signals.values<-20 | y.signals.values>20 ))*500;
+    cost = (1- alpha) * u_energy + alpha * error; 
+    %oscillations_pen;
+    costs = [costs; cost R];
+end
+
+
+[~,i]  = min(costs(:,1));
+R = costs(i,2)
+
+K = dlqr(A,B,Q,R);
 N = inv(C_*inv(eye(n)-A+B*K)*B);
-T=20; % Time duration of the simulation
+T=10; % Time duration of the simulation
 sim('statefdbk',T);
 
+if plots
+    figure;
+    hold on 
+    gg=plot(y.time,y.signals.values(:,1));
+    set(gg,'LineWidth',1.5)
+    gg=plot(Ref.time,Ref.signals.values(:,1));
+    set(gg,'LineWidth',1.5)
+    gg=xlabel('Time [s]');
+    set(gg,'Fontsize',14);
+    gg=ylabel('y');
+    set(gg,'Fontsize',14);
+    hold off
 
-figure;
-hold on 
-gg=plot(t,y(:,1));
-set(gg,'LineWidth',1.5)
-gg=plot(t,Ref(:,1));
-set(gg,'LineWidth',1.5)
-gg=xlabel('Time [s]');
-set(gg,'Fontsize',14);
-gg=ylabel('y');
-set(gg,'Fontsize',14);
-hold off
+    figure;
+    gg=plot(x_hat.time,x_hat.signals.values(:,1),x.time,x.signals.values(:,1));
+    set(gg,'LineWidth',1.5)
+    gg=xlabel('Time [s]');
+    set(gg,'Fontsize',14);
+    gg=ylabel('State');
+    set(gg,'Fontsize',14);
+    hl = legend('$\hat{x}$','$x$');
+    set(hl, 'Interpreter', 'latex');
+    % hl = legend('$\alpha$','$\beta$');
+    % set(hl, 'Interpreter', 'latex');
+    
+    
+    figure;
+    gg=plot(u.time,u.signals.values(:,1));
+    set(gg,'LineWidth',1.5)
+    gg=xlabel('Time [s]');
+    set(gg,'Fontsize',14);
+    gg=ylabel('u [V]');
+    set(gg,'Fontsize',14);
+    hl = legend('u');
+    set(hl, 'Interpreter', 'latex');
+end
 
 
-%est_error = x_hat - x;
-%sum(sqrt(est_error(:,1).^2 + est_error(:,2).^2 + est_error(:,3).^2 + est_error(:,4).^2 + est_error(:,5).^2 + est_error(:,6).^2 ))
-
-figure;
-gg=plot(t,x_hat(:,1),t,x(:,1));
-set(gg,'LineWidth',1.5)
-gg=xlabel('Time [s]');
-set(gg,'Fontsize',14);
-gg=ylabel('State');
-set(gg,'Fontsize',14);
-hl = legend('$\hat{x}$','$x$');
-set(hl, 'Interpreter', 'latex');
-% hl = legend('$\alpha$','$\beta$');
-% set(hl, 'Interpreter', 'latex');
-
-
-figure;
-gg=plot(t,u(:,1));
-set(gg,'LineWidth',1.5)
-gg=xlabel('Time [s]');
-set(gg,'Fontsize',14);
-gg=ylabel('u [V]');
-set(gg,'Fontsize',14);
-hl = legend('u');
-set(hl, 'Interpreter', 'latex');
 
 %%
+load('model.mat')
+
+figure
+sys = ss(A,B,C,D,0.02);
+[num,den] = ss2tf(A,B,C,D);
+num = conv(num,fliplr(num));
+den = conv(den,fliplr(den));
+sys = tf(num,den,-1);
+rlocus(sys)
+zgrid
+axis('equal')
 

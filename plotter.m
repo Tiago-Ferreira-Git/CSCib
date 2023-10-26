@@ -128,5 +128,73 @@ legend({"y_{fit}","Measured"},'Location',"southeast")
 xlabel('Voltage [V]')
 ylabel('Angle [º]')
 
+%% Control part
+
+close all;
+clear all;
 
 
+
+
+myDir = pwd; %gets directory
+myDir = fullfile(myDir,'4th session');
+myFiles = dir(fullfile(myDir,'*.mat')); 
+
+
+figure
+for k = 1:length(myFiles)
+  baseFileName = myFiles(k).name;
+  fullFileName = fullfile(myDir, baseFileName);
+  fprintf(1, 'Now reading %s\n', fullFileName);
+  load(fullFileName);
+  newStr = split(baseFileName,"_");
+  r_value = split(newStr{2},'.');
+  if length(newStr) < 3
+      t = 2:0.02:(-110+((length(u)-1)/4))*0.02;
+      u = u(100:100+length(t)-1);
+      hold on
+      grid on
+      plot(t,u,'DisplayName',sprintf('%s = %s',newStr{1},r_value{1}),'LineWidth',2);
+      xlim([2,2.8])
+      xlabel('Time [s]')
+      ylabel('u [V]')
+  end
+end
+legend show
+costs = [];
+for k = 1:length(myFiles)
+  baseFileName = myFiles(k).name;
+  fullFileName = fullfile(myDir, baseFileName);
+  fprintf(1, 'Now reading %s\n', fullFileName);
+  load(fullFileName);
+  t = 0:0.02:((length(u)-1))*0.02;
+  newStr = split(baseFileName,"_");
+  r_value = split(newStr{2},'.');
+  if length(newStr) < 3
+      if(~isa(Ref,'double'))
+        Ref = Ref.signals.values(:,1);
+      end
+      figure
+      subplot(2,1,1);
+      hold on
+      plot(t,y)
+      plot(t,Ref)
+      hold off
+      ylim([min(Ref)-5,max(Ref)+5])
+      xlabel('Time [s]')
+      ylabel('y [º]')
+      title(sprintf('%s = %s',newStr{1},r_value{1}))
+      subplot(2,1,2); 
+      plot(t,u);
+      ylim([min(u)-1,max(u)+1])
+      xlabel('Time [s]')
+      ylabel('u [V]')
+
+      alpha = 0.5;
+      error = sum(Ref(:,1) - y(:,1))^2;
+      u_energy = u' * u;
+      cost = (1- alpha) * u_energy + alpha * error; 
+      R = str2double(r_value{1});
+      costs = [costs; cost R];
+  end
+end

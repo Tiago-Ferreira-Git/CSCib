@@ -11,21 +11,31 @@ A = [A zeros(n,1); -C_ 1];
 B = [B ; 0];
 C = [C_ 0];
 
+figure
+sys = ss(A,B,C,D,0.02)
+[num,den] = ss2tf(A,B,C,D);
+num = conv(num,fliplr(num));
+den = conv(den,fliplr(den));
+sys = tf(num,den,-1);
+rlocus(sys)
+zgrid
+axis('equal')
 
 
 Q = C'*C;
-Q(n+1,n+1) = 0.025;
+Q(n+1,n+1) = 0.01;
 
 
-R = 1;
+R = 10;
 
 K = dlqr(A,B,Q,R);
+eig(A-B*K)
 Ki = K(end);
 K = K(1:end-1);
 
 load('model.mat')
 D = zeros(size(A,1),1);
-Q_w = 1000*eye(n);
+Q_w = 100*eye(n);
 R_v = 1;
 
 G = eye(n);
@@ -76,3 +86,4 @@ set(gg,'Fontsize',14);
 hl = legend('u');
 set(hl, 'Interpreter', 'latex');
 
+eig(A-B*K)
