@@ -35,9 +35,7 @@ for R = 10:1:100
     ref = zeros(length(y.signals.values));
     error = sum(Ref.signals.values(:,1) - y.signals.values(:,1))^2;
     u_energy = u.signals.values' * u.signals.values;
-    %oscillations_pen = length(y.signals.values(y.signals.values<-20 | y.signals.values>20 ))*500;
     cost = (1- alpha) * u_energy + alpha * error; 
-    %oscillations_pen;
     costs = [costs; cost R];
 end
 

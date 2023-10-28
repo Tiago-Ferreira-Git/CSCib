@@ -137,7 +137,7 @@ clear all;
 
 
 myDir = pwd; %gets directory
-myDir = fullfile(myDir,'4th session');
+myDir = fullfile(myDir,'5th session');
 myFiles = dir(fullfile(myDir,'*.mat')); 
 
 
